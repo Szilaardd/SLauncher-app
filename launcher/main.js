@@ -1,7 +1,8 @@
 const { app, BrowserWindow, shell, session, ipcMain } = require('electron');
 const path = require('path');
-const os = require('os'); // ez eddig hiányzott
-const { execFile } = require('child_process'); // játék indításához
+const os = require('os');
+const { execFile } = require('child_process');
+const { autoUpdater } = require('electron-updater');  // <-- itt import
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -33,11 +34,29 @@ function createWindow() {
       }
     });
   });
+
+  // Frissítés ellenőrzése indításkor és értesítés
+  autoUpdater.checkForUpdatesAndNotify();
+
+  autoUpdater.on('update-available', () => {
+    console.log('🟢 Új frissítés elérhető!');
+    // Itt pl. küldhetsz üzenetet a renderer felé, hogy értesítse a felhasználót
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    console.log('✅ Frissítés letöltve, újraindítás szükséges.');
+    // Itt például felajánlhatod az újraindítást:
+    // autoUpdater.quitAndInstall();
+  });
+
+  autoUpdater.on('error', (error) => {
+    console.error('❌ Frissítési hiba:', error);
+  });
 }
 
 app.whenReady().then(createWindow);
 
-// 🔧 Itt kezeljük az open-game parancsot a preload -> renderer kapcsolatból:  FM
+// Játék indítási események
 ipcMain.on('open-game', () => {
   const userLocalAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
   const gameFolderName = 'fantasztikus_32m_225rk_243';
@@ -57,27 +76,22 @@ ipcMain.on('open-game', () => {
   });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
-
-
-// SFE INDÍTÓ
-
-
 ipcMain.on('open-game2', () => {
-  // A program teljes elérési útvonala
   const gameExePath = path.join(
     'C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe'
   );
-  console.log('🟢 open-game esemeny erkezett!');
-  console.log('🎮 Inditando jatek:', gameExePath);
+  console.log('🟢 open-game2 esemény érkezett!');
+  console.log('🎮 Indítandó játék:', gameExePath);
 
   execFile(gameExePath, (error) => {
     if (error) {
-      console.error('❌ Nem sikerult elinditani a jatekot:', error);
+      console.error('❌ Nem sikerült elindítani a játékot:', error);
     } else {
       console.log('✅ Játék elindítva');
     }
   });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
 });
