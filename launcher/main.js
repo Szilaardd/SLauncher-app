@@ -37,8 +37,8 @@ if (isDev) {
       <h3 id="status">Checking for updates...</h3>
       <progress id="progress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
       <div id="buttons" style="margin-top:20px;">
-        <button id="launchBtn" style="padding:8px 15px; margin-right: 10px;">Launch anyway</button>
-        <button id="quitBtn" style="padding:8px 15px;">Quit</button>
+        <button id="launchBtn" style="padding:9px 16px; margin-right: 10px;">Launch anyway</button>
+        <button id="quitBtn" style="padding:9px 16px;">Quit</button>
       </div>
       <script>
         const { ipcRenderer } = require('electron');
