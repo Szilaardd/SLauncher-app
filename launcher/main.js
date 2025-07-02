@@ -13,7 +13,8 @@ function createUpdateWindow() {
     width: 400,
     height: 180,
     resizable: false,
-    frame: true,
+    frame: false, // menü és keret eltüntetése
+    alwaysOnTop: true, // opcionális, hogy mindig előtérben legyen
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -21,12 +22,16 @@ function createUpdateWindow() {
   });
 
   updateWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
-    <body style="font-family:sans-serif;text-align:center;padding-top:50px;">
+    <body style="font-family:sans-serif;text-align:center;padding:20px;">
       <h3 id="status">Checking for updates...</h3>
+      <progress id="progress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
       <script>
         const { ipcRenderer } = require('electron');
         ipcRenderer.on('update-status', (event, message) => {
           document.getElementById('status').innerText = message;
+        });
+        ipcRenderer.on('download-progress', (event, percent) => {
+          document.getElementById('progress').value = percent;
         });
       </script>
     </body>
@@ -78,6 +83,11 @@ app.whenReady().then(() => {
 
   autoUpdater.on('update-available', () => {
     if (updateWindow) updateWindow.webContents.send('update-status', 'Update found. Downloading...');
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    const percent = Math.floor(progressObj.percent);
+    if (updateWindow) updateWindow.webContents.send('download-progress', percent);
   });
 
   autoUpdater.on('update-not-available', () => {
