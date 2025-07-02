@@ -246,3 +246,26 @@ ipcMain.on('open-game3', () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+
+const RPC = require('discord-rpc');
+const clientId = '1389953618647584798'; // Itt add meg a Discord alkalmazásod Client ID-ját
+
+RPC.register(clientId);
+
+const rpc = new RPC.Client({ transport: 'ipc' });
+
+rpc.on('ready', () => {
+  rpc.setActivity({
+    details: 'Playing SLauncher',
+    state: 'Launching games',
+    startTimestamp: new Date(),
+    largeImageKey: 'launcher_icon', // ezt az assetet a Discord Developer Portalon kell beállítanod
+    largeImageText: 'SLauncher',
+    instance: false,
+  });
+
+  console.log('Discord Rich Presence is now active!');
+});
+
+rpc.login({ clientId }).catch(console.error);

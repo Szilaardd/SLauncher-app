@@ -22,6 +22,7 @@
     "define-data-property": "^1.1.4",
     "define-properties": "^1.2.1",
     "detect-node": "^2.1.0",
+    "discord-rpc": "^4.0.1",
     "electron-updater": "^6.6.2",
     "end-of-stream": "^1.4.5",
     "env-paths": "^2.2.1",
