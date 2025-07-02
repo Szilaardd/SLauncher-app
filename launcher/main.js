@@ -23,14 +23,12 @@ function createUpdateWindow() {
 
   const isDev = !app.isPackaged; // true, ha fejlesztői módban vagy
 
-if (isDev) {
-  // Fejlesztői módban explicit hívás a frissítés keresésre, lehetőség pre-release verziókra is
-  autoUpdater.allowPrerelease = true;
-  autoUpdater.checkForUpdates();
-} else {
-  // Csomagolt app esetén a megszokott hívás
-  autoUpdater.checkForUpdatesAndNotify();
-}
+  if (isDev) {
+    autoUpdater.allowPrerelease = true;
+    autoUpdater.checkForUpdates();
+  } else {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
 
   updateWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
     <body style="font-family:sans-serif;text-align:center;padding:20px;">
@@ -98,6 +96,8 @@ function createMainWindow() {
       if (state === 'completed') {
         console.log(`✅ Letöltve: ${filePath}`);
         shell.openPath(filePath);
+        // Jelzés a renderernek, hogy a letöltés kész
+        mainWindow.webContents.send('download-completed');
       } else {
         console.log(`❌ Letöltés megszakítva: ${state}`);
       }
@@ -108,14 +108,13 @@ function createMainWindow() {
 app.whenReady().then(() => {
   createUpdateWindow();
 
-if (!app.isPackaged) {
+  if (!app.isPackaged) {
     autoUpdater.allowPrerelease = true;
     autoUpdater.checkForUpdates();
   } else {
     autoUpdater.checkForUpdatesAndNotify();
   }
 
-  
   autoUpdater.checkForUpdatesAndNotify();
 
   autoUpdater.on('checking-for-update', () => {
@@ -203,6 +202,35 @@ ipcMain.on('open-game2', () => {
     'C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe'
   );
   console.log('🟢 open-game2 esemény érkezett!');
+  console.log('🎮 Indítandó játék:', gameExePath);
+
+  execFile(gameExePath, (error) => {
+    if (error) {
+      console.error('❌ Nem sikerült elindítani a játékot:', error);
+    } else {
+      console.log('✅ Játék elindítva');
+    }
+  });
+});
+
+// Új játék telepítettség ellenőrzése és indítása
+ipcMain.handle('check-game3-installed', async () => {
+  const userLocalAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const gameFolderName = 'jump_32together';
+  const exeName = 'Jump Together.exe';
+
+  const gameExePath = path.join(userLocalAppData, 'Programs', gameFolderName, exeName);
+  return fs.existsSync(gameExePath);
+});
+
+ipcMain.on('open-game3', () => {
+  const userLocalAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const gameFolderName = 'jump_32together';
+  const exeName = 'Jump Together.exe';
+
+  const gameExePath = path.join(userLocalAppData, 'Programs', gameFolderName, exeName);
+
+  console.log('🟢 open-game3 esemény érkezett!');
   console.log('🎮 Indítandó játék:', gameExePath);
 
   execFile(gameExePath, (error) => {
