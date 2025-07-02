@@ -3,7 +3,7 @@ const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
 const { autoUpdater } = require('electron-updater');
-const fs = require('fs'); // <-- fájlkezeléshez szükséges
+const fs = require('fs');
 
 let mainWindow;
 let updateWindow;
@@ -11,10 +11,10 @@ let updateWindow;
 function createUpdateWindow() {
   updateWindow = new BrowserWindow({
     width: 400,
-    height: 180,
+    height: 220,
     resizable: false,
-    frame: false, // menü és keret eltüntetése
-    alwaysOnTop: true, // opcionális, hogy mindig előtérben legyen
+    frame: false,
+    alwaysOnTop: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -25,13 +25,36 @@ function createUpdateWindow() {
     <body style="font-family:sans-serif;text-align:center;padding:20px;">
       <h3 id="status">Checking for updates...</h3>
       <progress id="progress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
+      <div id="buttons" style="margin-top:20px;">
+        <button id="launchBtn" style="padding:8px 15px; margin-right: 10px;">Launch anyway</button>
+        <button id="quitBtn" style="padding:8px 15px;">Quit</button>
+      </div>
       <script>
         const { ipcRenderer } = require('electron');
+        const status = document.getElementById('status');
+        const progress = document.getElementById('progress');
+        const buttons = document.getElementById('buttons');
+        const launchBtn = document.getElementById('launchBtn');
+        const quitBtn = document.getElementById('quitBtn');
+
         ipcRenderer.on('update-status', (event, message) => {
-          document.getElementById('status').innerText = message;
+          status.innerText = message;
         });
+
         ipcRenderer.on('download-progress', (event, percent) => {
-          document.getElementById('progress').value = percent;
+          progress.value = percent;
+          // Ha letöltés folyamatban van, eltüntetjük a gombokat
+          if (percent > 0 && percent < 100) {
+            buttons.style.display = 'none';
+          }
+        });
+
+        launchBtn.addEventListener('click', () => {
+          ipcRenderer.send('launch-anyway');
+        });
+
+        quitBtn.addEventListener('click', () => {
+          ipcRenderer.send('quit-app');
         });
       </script>
     </body>
@@ -115,15 +138,24 @@ app.whenReady().then(() => {
   });
 });
 
-// ✅ Új IPC handler a játék meglétének ellenőrzésére
+// IPC események a gombokhoz
+ipcMain.on('launch-anyway', () => {
+  if (updateWindow) updateWindow.close();
+  createMainWindow();
+});
+
+ipcMain.on('quit-app', () => {
+  app.quit();
+});
+
+// További IPC-k a játék indításához (az eredetidből)
 ipcMain.handle('check-game-installed', async () => {
   const gameExePath = path.join(
     'C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe'
   );
-  return fs.existsSync(gameExePath); // true ha létezik, false ha nem
+  return fs.existsSync(gameExePath);
 });
 
-// Játék indítási események
 ipcMain.on('open-game', () => {
   const userLocalAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
   const gameFolderName = 'fantasztikus_32m_225rk_243';
