@@ -5,8 +5,38 @@ const { execFile } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 const fs = require('fs'); // <-- fájlkezeléshez szükséges
 
-function createWindow() {
-  const win = new BrowserWindow({
+let mainWindow;
+let updateWindow;
+
+function createUpdateWindow() {
+  updateWindow = new BrowserWindow({
+    width: 400,
+    height: 180,
+    resizable: false,
+    frame: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  updateWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
+    <body style="font-family:sans-serif;text-align:center;padding-top:50px;">
+      <h3 id="status">Checking for updates...</h3>
+      <script>
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.on('update-status', (event, message) => {
+          document.getElementById('status').innerText = message;
+        });
+      </script>
+    </body>
+  `));
+
+  updateWindow.once('ready-to-show', () => updateWindow.show());
+}
+
+function createMainWindow() {
+  mainWindow = new BrowserWindow({
     width: 1000,
     height: 800,
     resizable: true,
@@ -19,10 +49,10 @@ function createWindow() {
     }
   });
 
-  win.setMenu(null);
-  win.loadURL('https://szilaardd.github.io/SLauncher/');
+  mainWindow.setMenu(null);
+  mainWindow.loadURL('https://szilaardd.github.io/SLauncher/');
 
-  session.defaultSession.on('will-download', (event, item, webContents) => {
+  session.defaultSession.on('will-download', (event, item) => {
     const filePath = path.join(app.getPath('downloads'), item.getFilename());
     item.setSavePath(filePath);
 
@@ -35,23 +65,45 @@ function createWindow() {
       }
     });
   });
+}
+
+app.whenReady().then(() => {
+  createUpdateWindow();
 
   autoUpdater.checkForUpdatesAndNotify();
 
+  autoUpdater.on('checking-for-update', () => {
+    if (updateWindow) updateWindow.webContents.send('update-status', 'Checking for updates...');
+  });
+
   autoUpdater.on('update-available', () => {
-    console.log('🟢 Új frissítés elérhető!');
+    if (updateWindow) updateWindow.webContents.send('update-status', 'Update found. Downloading...');
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    if (updateWindow) updateWindow.webContents.send('update-status', 'No updates found.');
+    setTimeout(() => {
+      if (updateWindow) updateWindow.close();
+      createMainWindow();
+    }, 1500);
   });
 
   autoUpdater.on('update-downloaded', () => {
-    console.log('✅ Frissítés letöltve, újraindítás szükséges.');
+    if (updateWindow) updateWindow.webContents.send('update-status', 'Update downloaded. Restarting...');
+    setTimeout(() => {
+      autoUpdater.quitAndInstall();
+    }, 1500);
   });
 
   autoUpdater.on('error', (error) => {
     console.error('❌ Frissítési hiba:', error);
+    if (updateWindow) updateWindow.webContents.send('update-status', 'Update error. Launching app.');
+    setTimeout(() => {
+      if (updateWindow) updateWindow.close();
+      createMainWindow();
+    }, 2000);
   });
-}
-
-app.whenReady().then(createWindow);
+});
 
 // ✅ Új IPC handler a játék meglétének ellenőrzésére
 ipcMain.handle('check-game-installed', async () => {
