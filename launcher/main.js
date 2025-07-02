@@ -21,7 +21,7 @@ function createUpdateWindow() {
     }
   });
 
-  const isDev = !app.isPackaged; // true, ha fejlesztői módban vagy
+  const isDev = !app.isPackaged;
 
   if (isDev) {
     autoUpdater.allowPrerelease = true;
@@ -96,7 +96,6 @@ function createMainWindow() {
       if (state === 'completed') {
         console.log(`✅ Letöltve: ${filePath}`);
         shell.openPath(filePath);
-        // Jelzés a renderernek, hogy a letöltés kész
         mainWindow.webContents.send('download-completed');
       } else {
         console.log(`❌ Letöltés megszakítva: ${state}`);
@@ -160,7 +159,7 @@ app.whenReady().then(() => {
   });
 });
 
-// IPC események a gombokhoz
+// IPC események a frissítő ablak gombjaihoz
 ipcMain.on('launch-anyway', () => {
   if (updateWindow) updateWindow.close();
   createMainWindow();
@@ -170,19 +169,20 @@ ipcMain.on('quit-app', () => {
   app.quit();
 });
 
-// Játékellenőrzés és indítás (eredeti kód)
-ipcMain.handle('check-game-installed', async () => {
-  const gameExePath = path.join(
-    'C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe'
-  );
+// --- Játék telepítettség ellenőrzése és indítása ---
+
+// Fantasztikus Márkó
+ipcMain.handle('checkFmInstalled', async () => {
+  const userLocalAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const gameFolderName = 'fantasztikus_32m_225rk_243';
+  const exeName = 'Fantasztikus Márkó.exe';
+  const gameExePath = path.join(userLocalAppData, 'Programs', gameFolderName, exeName);
   return fs.existsSync(gameExePath);
 });
-
 ipcMain.on('open-game', () => {
   const userLocalAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
   const gameFolderName = 'fantasztikus_32m_225rk_243';
   const exeName = 'Fantasztikus Márkó.exe';
-
   const gameExePath = path.join(userLocalAppData, 'Programs', gameFolderName, exeName);
 
   console.log('🟢 open-game esemény érkezett!');
@@ -197,10 +197,14 @@ ipcMain.on('open-game', () => {
   });
 });
 
+// Spidey - Flies eater
+ipcMain.handle('checkSfeInstalled', async () => {
+  const gameExePath = path.join('C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe');
+  return fs.existsSync(gameExePath);
+});
 ipcMain.on('open-game2', () => {
-  const gameExePath = path.join(
-    'C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe'
-  );
+  const gameExePath = path.join('C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe');
+
   console.log('🟢 open-game2 esemény érkezett!');
   console.log('🎮 Indítandó játék:', gameExePath);
 
@@ -213,21 +217,18 @@ ipcMain.on('open-game2', () => {
   });
 });
 
-// Új játék telepítettség ellenőrzése és indítása
-ipcMain.handle('check-game3-installed', async () => {
+// Jump Together
+ipcMain.handle('checkJtInstalled', async () => {
   const userLocalAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
   const gameFolderName = 'jump_32together';
   const exeName = 'Jump Together.exe';
-
   const gameExePath = path.join(userLocalAppData, 'Programs', gameFolderName, exeName);
   return fs.existsSync(gameExePath);
 });
-
 ipcMain.on('open-game3', () => {
   const userLocalAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
   const gameFolderName = 'jump_32together';
   const exeName = 'Jump Together.exe';
-
   const gameExePath = path.join(userLocalAppData, 'Programs', gameFolderName, exeName);
 
   console.log('🟢 open-game3 esemény érkezett!');
