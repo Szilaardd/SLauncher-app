@@ -2,7 +2,8 @@ const { app, BrowserWindow, shell, session, ipcMain } = require('electron');
 const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
-const { autoUpdater } = require('electron-updater');  // <-- itt import
+const { autoUpdater } = require('electron-updater');
+const fs = require('fs'); // <-- fájlkezeléshez szükséges
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -20,7 +21,6 @@ function createWindow() {
   win.setMenu(null);
   win.loadURL('https://szilaardd.github.io/SLauncher/');
 
-  // Letöltések figyelése
   session.defaultSession.on('will-download', (event, item, webContents) => {
     const filePath = path.join(app.getPath('downloads'), item.getFilename());
     item.setSavePath(filePath);
@@ -35,18 +35,14 @@ function createWindow() {
     });
   });
 
-  // Frissítés ellenőrzése indításkor és értesítés
   autoUpdater.checkForUpdatesAndNotify();
 
   autoUpdater.on('update-available', () => {
     console.log('🟢 Új frissítés elérhető!');
-    // Itt pl. küldhetsz üzenetet a renderer felé, hogy értesítse a felhasználót
   });
 
   autoUpdater.on('update-downloaded', () => {
     console.log('✅ Frissítés letöltve, újraindítás szükséges.');
-    // Itt például felajánlhatod az újraindítást:
-    // autoUpdater.quitAndInstall();
   });
 
   autoUpdater.on('error', (error) => {
@@ -55,6 +51,14 @@ function createWindow() {
 }
 
 app.whenReady().then(createWindow);
+
+// ✅ Új IPC handler a játék meglétének ellenőrzésére
+ipcMain.handle('check-game-installed', async () => {
+  const gameExePath = path.join(
+    'C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe'
+  );
+  return fs.existsSync(gameExePath); // true ha létezik, false ha nem
+});
 
 // Játék indítási események
 ipcMain.on('open-game', () => {
