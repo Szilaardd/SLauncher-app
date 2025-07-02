@@ -21,6 +21,17 @@ function createUpdateWindow() {
     }
   });
 
+  const isDev = !app.isPackaged; // true, ha fejlesztői módban vagy
+
+if (isDev) {
+  // Fejlesztői módban explicit hívás a frissítés keresésre, lehetőség pre-release verziókra is
+  autoUpdater.allowPrerelease = true;
+  autoUpdater.checkForUpdates();
+} else {
+  // Csomagolt app esetén a megszokott hívás
+  autoUpdater.checkForUpdatesAndNotify();
+}
+
   updateWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
     <body style="font-family:sans-serif;text-align:center;padding:20px;">
       <h3 id="status">Checking for updates...</h3>
@@ -97,6 +108,14 @@ function createMainWindow() {
 app.whenReady().then(() => {
   createUpdateWindow();
 
+if (!app.isPackaged) {
+    autoUpdater.allowPrerelease = true;
+    autoUpdater.checkForUpdates();
+  } else {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+
+  
   autoUpdater.checkForUpdatesAndNotify();
 
   autoUpdater.on('checking-for-update', () => {
