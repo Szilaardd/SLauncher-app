@@ -257,8 +257,18 @@ const rpc = new RPC.Client({ transport: 'ipc' });
 
 rpc.on('ready', () => {
   rpc.setActivity({
-    details: 'Playing SLauncher',
-    state: 'Launching games',
+    details: 'SLauncher',
+    state: 'Szilard games',
+    buttons: [
+    {
+      label: "Join Discord",
+      url: "https://discord.com/invite/yFqjS2Hufe"
+    },
+    {
+      label: "Download",
+      url: "https://szilaardd.github.io/SLauncher/download.html"
+    }
+  ],
     startTimestamp: new Date(),
     largeImageKey: 'launcher_icon', // ezt az assetet a Discord Developer Portalon kell beállítanod
     largeImageText: 'SLauncher',
