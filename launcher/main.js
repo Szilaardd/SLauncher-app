@@ -43,7 +43,6 @@ function createUpdateWindow() {
 
         ipcRenderer.on('download-progress', (event, percent) => {
           progress.value = percent;
-          // Ha letöltés folyamatban van, eltüntetjük a gombokat
           if (percent > 0 && percent < 100) {
             buttons.style.display = 'none';
           }
@@ -101,19 +100,23 @@ app.whenReady().then(() => {
   autoUpdater.checkForUpdatesAndNotify();
 
   autoUpdater.on('checking-for-update', () => {
+    console.log('Event: checking-for-update');
     if (updateWindow) updateWindow.webContents.send('update-status', 'Checking for updates...');
   });
 
   autoUpdater.on('update-available', () => {
+    console.log('Event: update-available');
     if (updateWindow) updateWindow.webContents.send('update-status', 'Update found. Downloading...');
   });
 
   autoUpdater.on('download-progress', (progressObj) => {
     const percent = Math.floor(progressObj.percent);
+    console.log(`Event: download-progress - ${percent}%`);
     if (updateWindow) updateWindow.webContents.send('download-progress', percent);
   });
 
   autoUpdater.on('update-not-available', () => {
+    console.log('Event: update-not-available');
     if (updateWindow) updateWindow.webContents.send('update-status', 'No updates found.');
     setTimeout(() => {
       if (updateWindow) updateWindow.close();
@@ -122,6 +125,7 @@ app.whenReady().then(() => {
   });
 
   autoUpdater.on('update-downloaded', () => {
+    console.log('Event: update-downloaded');
     if (updateWindow) updateWindow.webContents.send('update-status', 'Update downloaded. Restarting...');
     setTimeout(() => {
       autoUpdater.quitAndInstall();
@@ -129,7 +133,7 @@ app.whenReady().then(() => {
   });
 
   autoUpdater.on('error', (error) => {
-    console.error('❌ Frissítési hiba:', error);
+    console.error('Event: error', error);
     if (updateWindow) updateWindow.webContents.send('update-status', 'Update error. Launching app.');
     setTimeout(() => {
       if (updateWindow) updateWindow.close();
@@ -148,7 +152,7 @@ ipcMain.on('quit-app', () => {
   app.quit();
 });
 
-// További IPC-k a játék indításához (az eredetidből)
+// Játékellenőrzés és indítás (eredeti kód)
 ipcMain.handle('check-game-installed', async () => {
   const gameExePath = path.join(
     'C:', 'Program Files (x86)', 'Spidey - Flies eater', 'Spidey - flies eater.exe'
