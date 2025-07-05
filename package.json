@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "open": "^10.1.2"
   }
 }

@@ -86,7 +86,7 @@ function createMainWindow() {
   });
 
   mainWindow.setMenu(null);
-  mainWindow.loadURL('https://szilaardd.github.io/SLauncher/');
+  mainWindow.loadURL('https://szilaardd.github.io/SLauncher/'); 
 
   session.defaultSession.on('will-download', (event, item) => {
     const filePath = path.join(app.getPath('downloads'), item.getFilename());
@@ -157,6 +157,14 @@ app.whenReady().then(() => {
       createMainWindow();
     }, 2000);
   });
+});
+
+ipcMain.on('open-discord-link', () => {
+  shell.openExternal('https://discord.gg/yFqjS2Hufe');
+});
+
+ipcMain.on('open-web-link', () => {
+  shell.openExternal('https://szilaardd.github.io/SLauncher/download.html');
 });
 
 // IPC események a frissítő ablak gombjaihoz
@@ -261,12 +269,12 @@ rpc.on('ready', () => {
     state: 'Szilard games',
     buttons: [
     {
-      label: "Join Discord",
-      url: "https://discord.com/invite/yFqjS2Hufe"
+      label: 'Join Discord',
+      url: 'https://discord.com/invite/yFqjS2Hufe'
     },
     {
-      label: "Download",
-      url: "https://szilaardd.github.io/SLauncher/download.html"
+      label: 'Download',
+      url: 'https://szilaardd.github.io/SLauncher/download.html'
     }
   ],
     startTimestamp: new Date(),
