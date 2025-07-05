@@ -277,13 +277,34 @@ rpc.on('ready', () => {
       url: 'https://szilaardd.github.io/SLauncher/download.html'
     }
   ],
-    startTimestamp: new Date(),
-    largeImageKey: 'launcher_icon', // ezt az assetet a Discord Developer Portalon kell beállítanod
-    largeImageText: 'SLauncher',
-    instance: false,
+startTimestamp: new Date(),
+  instance: false,
   });
 
   console.log('Discord Rich Presence is now active!');
 });
 
 rpc.login({ clientId }).catch(console.error);
+
+
+/* Stranger Sphere */
+
+ipcMain.handle('checkSsInstalled', async () => {
+  const gameExePath = path.join('C:', 'Program Files', 'Stranger Sphere', 'Windows', 'Stranger_Sphere', 'Binaries', 'Win64', 'Stranger_Sphere.exe');
+  return fs.existsSync(gameExePath);
+});
+
+ipcMain.on('open-game4', () => {
+  const gameExePath = path.join('C:', 'Program Files', 'Stranger Sphere', 'Windows', 'Stranger_Sphere', 'Binaries', 'Win64', 'Stranger_Sphere.exe');
+
+  console.log('🟢 open-game4 esemény érkezett!');
+  console.log('🎮 Indítandó játék:', gameExePath);
+
+  execFile(gameExePath, (error) => {
+    if (error) {
+      console.error('❌ Nem sikerült elindítani a játékot:', error);
+    } else {
+      console.log('✅ Játék elindítva');
+    }
+  });
+});
