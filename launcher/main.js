@@ -288,7 +288,6 @@ rpc.login({ clientId }).catch(console.error);
 
 
 const SevenBin = require('7zip-bin');
-const { execFile } = require('child_process');
 
 const sevenZipPath = SevenBin.path7za;
 
