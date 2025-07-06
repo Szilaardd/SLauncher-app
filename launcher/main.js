@@ -287,6 +287,21 @@ startTimestamp: new Date(),
 rpc.login({ clientId }).catch(console.error);
 
 
+const SevenBin = require('7zip-bin');
+const { execFile } = require('child_process');
+
+const sevenZipPath = SevenBin.path7za;
+
+execFile(sevenZipPath, ['x', 'SSInstallerV1.7z', '-oC:\\path\\to\\extract', '-y'], (err, stdout, stderr) => {
+  if (err) {
+    console.error('Extract error:', err);
+  } else {
+    console.log('Extract done');
+  }
+});
+
+
+
 /* Stranger Sphere */
 
 ipcMain.handle('checkSsInstalled', async () => {
@@ -307,4 +322,101 @@ ipcMain.on('open-game4', () => {
       console.log('✅ Játék elindítva');
     }
   });
+});
+
+
+const https = require('https');
+
+// Letöltendő fájlok és célnevek
+const ssDownloadFolder = path.join(app.getPath('userData'), 'downloads');
+const ssFiles = [
+  {
+    url: 'https://github.com/Szilaardd/SLauncher/releases/download/game/SSInstallerV1.7z.001',
+    filename: 'SSInstallerV1.7z'
+  },
+  {
+    url: 'https://github.com/Szilaardd/SLauncher/releases/download/game/SSInstallerV1.7z.002',
+    filename: 'SSInstallerV1.7z.002'
+  }
+];
+
+// Letöltés segédfüggvény
+function downloadFile(url, dest) {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(path.dirname(dest))) fs.mkdirSync(path.dirname(dest), { recursive: true });
+
+    const file = fs.createWriteStream(dest);
+    https.get(url, (res) => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`Failed to get '${url}', status code: ${res.statusCode}`));
+        return;
+      }
+      res.pipe(file);
+      file.on('finish', () => file.close(resolve));
+    }).on('error', (err) => {
+      fs.unlink(dest, () => reject(err));
+    });
+  });
+}
+
+// Kibontás 7zip-pel (7za.exe kell vagy elérhető a PATH-ban)
+function extractArchive(archivePath, extractTo) {
+  return new Promise((resolve, reject) => {
+    const sevenZipPath = '7za.exe'; // Ha nincs PATH-ban, add meg abszolút elérési útját
+    execFile(sevenZipPath, ['x', archivePath, `-o${extractTo}`, '-y'], (error, stdout, stderr) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+// Telepítő futtatása
+function runSetup(setupPath) {
+  return new Promise((resolve, reject) => {
+    execFile(setupPath, (error, stdout, stderr) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+// IPC esemény: indítja a letöltést, kibontást és telepítőt
+ipcMain.handle('download-and-install-ss', async () => {
+  try {
+    if (!fs.existsSync(ssDownloadFolder)) fs.mkdirSync(ssDownloadFolder, { recursive: true });
+
+    // Letöltés
+    for (const file of ssFiles) {
+      const dest = path.join(ssDownloadFolder, file.filename);
+      console.log(`Downloading ${file.url} to ${dest}`);
+      await downloadFile(file.url, dest);
+    }
+
+    // Kibontás az első fájlból (a 7z automatikusan kezeli a .002 részt is)
+    const archivePath = path.join(ssDownloadFolder, 'SSInstallerV1.7z');
+    console.log('Extracting archive...');
+    await extractArchive(archivePath, ssDownloadFolder);
+
+    // Telepítő futtatása
+    const setupExePath = path.join(ssDownloadFolder, 'StrangerSphereSetup.exe');
+    if (fs.existsSync(setupExePath)) {
+      console.log('Running setup...');
+      await runSetup(setupExePath);
+      console.log('Setup finished.');
+      return { success: true };
+    } else {
+      const msg = 'Setup exe not found: ' + setupExePath;
+      console.error(msg);
+      return { success: false, error: msg };
+    }
+  } catch (err) {
+    console.error('Error during download and install:', err);
+    return { success: false, error: err.message };
+  }
 });
