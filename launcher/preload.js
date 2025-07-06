@@ -29,6 +29,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   openDiscordLink: () => ipcRenderer.send('open-discord-link'),
   openWebLink: () => ipcRenderer.send('open-web-link'),
+  openGamesWindow: () => ipcRenderer.invoke('open-games-window'),
   // ... a többi is, ha kell
 });
 
