@@ -1,11 +1,11 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const https = require('https');
 const { execFile } = require('child_process');
-// node-7z használata, telepítsd: npm install node-7z
-const Seven = require('node-7z');
+const { autoUpdater } = require('electron-updater');
+const extract = require('node-7z');
+const sevenZipPath = require('7zip-bin').path7za;
 
 let mainWindow;
 let updateWindow;
@@ -60,8 +60,6 @@ function createUpdateWindow() {
       </script>
     </body>
   `));
-
-  updateWindow.once('ready-to-show', () => updateWindow.show());
 }
 
 function createMainWindow() {
@@ -75,166 +73,50 @@ function createMainWindow() {
   });
 
   mainWindow.setMenu(null);
-
   mainWindow.loadFile(path.join(__dirname, 'build', 'index.html'));
-
-  // mainWindow.webContents.openDevTools();
 }
-
-// Letöltésekhez mappa
-const downloadsDir = path.join(app.getPath('userData'), 'downloads');
-if (!fs.existsSync(downloadsDir)) {
-  fs.mkdirSync(downloadsDir, { recursive: true });
-}
-
-// Játékfájlok URL-jei, állítsd be a valós linkeket
-const gameFiles = {
-  fm: ['https://example.com/fm.7z'],
-  sfe: ['https://example.com/sfe.7z'],
-  jt: ['https://example.com/jt.7z'],
-  ss: [
-    'https://example.com/ss.7z',
-    'https://example.com/ss.001'
-  ],
-};
-
-// IPC: játék letöltése
-ipcMain.on('download-game', async (event, gameId) => {
-  if (!gameFiles[gameId]) {
-    event.sender.send('download-error', `Ismeretlen játék: ${gameId}`);
-    return;
-  }
-
-  try {
-    const files = gameFiles[gameId];
-    const downloadedFiles = [];
-
-    for (const fileUrl of files) {
-      const fileName = path.basename(fileUrl);
-      const filePath = path.join(downloadsDir, fileName);
-      await downloadFile(fileUrl, filePath, (percent) => {
-        event.sender.send('download-progress', { gameId, progress: percent });
-      });
-      downloadedFiles.push(filePath);
-    }
-
-    if (gameId === 'ss') {
-      const extractPath = path.join(downloadsDir, 'ss_extracted');
-      if (!fs.existsSync(extractPath)) fs.mkdirSync(extractPath);
-      await extract7z(downloadedFiles[0], extractPath);
-    }
-
-    event.sender.send('download-completed', gameId);
-  } catch (err) {
-    event.sender.send('download-error', err.message);
-  }
-});
-
-// IPC: játék indítása
-ipcMain.on('open-game', (event, gameId) => {
-  let exePath;
-
-  if (gameId === 'ss') {
-    exePath = path.join(downloadsDir, 'ss_extracted', 'setup.exe'); // módosítsd, ha más az exe neve
-  } else {
-    exePath = path.join(downloadsDir, `${gameId}.exe`); // feltételezett exe név
-  }
-
-  if (!fs.existsSync(exePath)) {
-    event.sender.send('open-game-error', `Nem található az indító fájl: ${exePath}`);
-    return;
-  }
-
-  execFile(exePath, (error) => {
-    if (error) {
-      event.sender.send('open-game-error', `Hiba a játék indításakor: ${error.message}`);
-    }
-  });
-});
-
-// Letöltést segítő függvény
-function downloadFile(url, dest, onProgress) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    let receivedBytes = 0;
-
-    https.get(url, (response) => {
-      const totalBytes = parseInt(response.headers['content-length'], 10);
-      response.pipe(file);
-
-      response.on('data', (chunk) => {
-        receivedBytes += chunk.length;
-        const percent = Math.round((receivedBytes / totalBytes) * 100);
-        onProgress(percent);
-      });
-
-      file.on('finish', () => {
-        file.close(resolve);
-      });
-    }).on('error', (err) => {
-      fs.unlink(dest, () => reject(err));
-    });
-  });
-}
-
-// 7zip kicsomagolás
-function extract7z(archivePath, outputPath) {
-  return new Promise((resolve, reject) => {
-    const myStream = Seven.extractFull(archivePath, outputPath, {
-      $progress: true
-    });
-
-    myStream.on('end', resolve);
-    myStream.on('error', reject);
-  });
-}
-
-// app lifecycle, updater, ipcMain események...
 
 app.whenReady().then(() => {
   createUpdateWindow();
-
   autoUpdater.checkForUpdatesAndNotify();
 
   autoUpdater.on('checking-for-update', () => {
-    if (updateWindow) updateWindow.webContents.send('update-status', 'Checking for updates...');
+    updateWindow?.webContents.send('update-status', 'Checking for updates...');
   });
 
   autoUpdater.on('update-available', () => {
-    if (updateWindow) updateWindow.webContents.send('update-status', 'Update found. Downloading...');
+    updateWindow?.webContents.send('update-status', 'Update found. Downloading...');
   });
 
   autoUpdater.on('download-progress', (progressObj) => {
     const percent = Math.floor(progressObj.percent);
-    if (updateWindow) updateWindow.webContents.send('download-progress', percent);
+    updateWindow?.webContents.send('download-progress', percent);
   });
 
   autoUpdater.on('update-not-available', () => {
-    if (updateWindow) updateWindow.webContents.send('update-status', 'No updates found.');
+    updateWindow?.webContents.send('update-status', 'No updates found.');
     setTimeout(() => {
-      if (updateWindow) updateWindow.close();
+      updateWindow?.close();
       createMainWindow();
     }, 1500);
   });
 
   autoUpdater.on('update-downloaded', () => {
-    if (updateWindow) updateWindow.webContents.send('update-status', 'Update downloaded. Restarting...');
-    setTimeout(() => {
-      autoUpdater.quitAndInstall();
-    }, 1500);
+    updateWindow?.webContents.send('update-status', 'Update downloaded. Restarting...');
+    setTimeout(() => autoUpdater.quitAndInstall(), 1500);
   });
 
-  autoUpdater.on('error', (error) => {
-    if (updateWindow) updateWindow.webContents.send('update-status', 'Update error. Launching app.');
+  autoUpdater.on('error', () => {
+    updateWindow?.webContents.send('update-status', 'Update error. Launching app.');
     setTimeout(() => {
-      if (updateWindow) updateWindow.close();
+      updateWindow?.close();
       createMainWindow();
     }, 2000);
   });
 });
 
 ipcMain.on('launch-anyway', () => {
-  if (updateWindow) updateWindow.close();
+  updateWindow?.close();
   createMainWindow();
 });
 
@@ -245,3 +127,110 @@ ipcMain.on('quit-app', () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+// ─────────────────────────────────────────────────────────────
+// DOWNLOAD AND OPEN GAME LOGIC
+// ─────────────────────────────────────────────────────────────
+const DOWNLOADS_DIR = path.join(app.getPath('documents'), 'SLauncherGames');
+
+const gameLinks = {
+  fm: {
+    url: 'https://github.com/Szilaardd/SLauncher/raw/refs/heads/main/games/fm/V1.2.1/Windows-Installer.exe',
+    fileName: 'Windows-Installer.exe'
+  },
+  sfe: {
+    url: 'https://github.com/Szilaardd/SLauncher/raw/refs/heads/main/games/sfe/V1.0/Installer.exe',
+    fileName: 'Installer.exe'
+  },
+  jt: {
+    url: 'https://github.com/Szilaardd/SLauncher/raw/refs/heads/main/games/jt/Jump%20Together-1_0_0-windows.exe',
+    fileName: 'JumpTogether.exe'
+  },
+  ss: {
+    parts: [
+      'https://github.com/Szilaardd/SLauncher/releases/download/ss/SSInstallerV1.7z.001',
+      'https://github.com/Szilaardd/SLauncher/releases/download/ss/SSInstallerV1.7z.002'
+    ],
+    outputFolder: 'Stranger_Sphere',
+    finalExe: path.join(DOWNLOADS_DIR, 'ss', 'Stranger_Sphere', 'Windows', 'Stranger_Sphere', 'Binaries', 'Win64', 'Stranger_Sphere.exe')
+  }
+};
+
+ipcMain.on('download-game', async (event, gameId) => {
+  const game = gameLinks[gameId];
+  if (!game) return;
+
+  const gameDir = path.join(DOWNLOADS_DIR, gameId);
+  fs.mkdirSync(gameDir, { recursive: true });
+
+  if (gameId === 'ss') {
+    let downloaded = 0;
+    for (let i = 0; i < game.parts.length; i++) {
+      const partUrl = game.parts[i];
+      const partPath = path.join(gameDir, `SSInstallerV1.7z.00${i + 1}`);
+      await downloadFile(partUrl, partPath, (percent) => {
+        const progress = Math.floor(((downloaded + percent / 100) / game.parts.length) * 100);
+        event.sender.send('download-progress', { gameId, progress });
+      });
+      downloaded++;
+    }
+
+    const output = path.join(gameDir, game.outputFolder);
+    fs.mkdirSync(output, { recursive: true });
+
+   await new Promise((resolve, reject) => {
+  const stream = extractFull(
+    path.join(gameDir, 'SSInstallerV1.7z.001'),
+    output,
+    { $bin: sevenZipPath }
+  );
+
+  stream.on('end', resolve);
+  stream.on('error', reject);
+});
+
+
+    event.sender.send('download-completed', gameId);
+  } else {
+    const filePath = path.join(gameDir, game.fileName);
+    await downloadFile(game.url, filePath, (percent) => {
+      event.sender.send('download-progress', { gameId, progress: Math.floor(percent) });
+    });
+
+    execFile(filePath);
+    event.sender.send('download-completed', gameId);
+  }
+});
+
+ipcMain.on('open-game', (event, gameId) => {
+  if (gameId === 'ss') {
+    const exePath = gameLinks.ss.finalExe;
+    if (fs.existsSync(exePath)) execFile(exePath);
+    else console.error('Stranger_Sphere.exe not found.');
+  } else {
+    const filePath = path.join(DOWNLOADS_DIR, gameId, gameLinks[gameId].fileName);
+    if (fs.existsSync(filePath)) execFile(filePath);
+    else console.error('Game not installed:', filePath);
+  }
+});
+
+function downloadFile(url, dest, onProgress) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    https.get(url, (response) => {
+      const total = parseInt(response.headers['content-length'], 10);
+      let downloaded = 0;
+
+      response.pipe(file);
+      response.on('data', (chunk) => {
+        downloaded += chunk.length;
+        const percent = (downloaded / total) * 100;
+        onProgress(percent);
+      });
+
+      file.on('finish', () => file.close(resolve));
+    }).on('error', (err) => {
+      fs.unlink(dest, () => reject(err));
+    });
+  });
+}

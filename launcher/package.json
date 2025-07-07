@@ -12,6 +12,7 @@
     "package": "electron-builder --config electron-builder.json"
   },
   "dependencies": {
+    "7zip-bin": "^5.2.0",
     "electron-updater": "^6.1.7",
     "node-7z": "^3.0.0",
     "react": "^18.2.0",
