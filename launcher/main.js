@@ -70,12 +70,18 @@ function createMainWindow() {
   });
 
   mainWindow.setMenu(null);
-  mainWindow.loadFile(path.join(__dirname, 'build', 'index.html'));
+
+  const indexPath = path.join(__dirname, 'build', 'index.html');
+  mainWindow.loadURL(`file://${indexPath}`);
+
+  // DevTools bekapcsolása, ha kell
+  // mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {
-  /* createUpdateWindow(); */
-    createMainWindow();
+  createUpdateWindow();
+  // Ha nem akarod updateWindow-ot használni, cseréld erre:
+  // createMainWindow();
 
   autoUpdater.checkForUpdatesAndNotify();
 
@@ -129,14 +135,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-
-// --- 133. sor környékén ---
-
 ipcMain.on('download-game', (event, gameId) => {
   console.log('Download requested for:', gameId);
-  // Itt indítsd el a több részes zip letöltésed logikáját
-  // Ez egy egyszerű demo progressz visszajelzéssel:
-
   let progress = 0;
   const interval = setInterval(() => {
     progress += 10;
@@ -150,5 +150,5 @@ ipcMain.on('download-game', (event, gameId) => {
 
 ipcMain.on('open-game', (event, gameId) => {
   console.log('Open game requested:', gameId);
-  // Ide jön a játék elindítási kódja (pl. child_process spawn)
+  // TODO: Indítsd el a játékot itt
 });
