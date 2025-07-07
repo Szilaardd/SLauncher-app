@@ -36,6 +36,9 @@
   },
   "build": {
     "appId": "com.szilaardd.slauncher",
+    "extraMetadata": {
+      "main": "main.js"
+    },
     "files": [
       "build/**/*",
       "main.js",
