@@ -9,6 +9,7 @@ const electronAPI = window.electronAPI || {
   openGame: (gameId) => console.log('Mock openGame:', gameId),
 };
 
+
 function Navbar() {
   const navStyle = {
     padding: '1rem 2rem',
