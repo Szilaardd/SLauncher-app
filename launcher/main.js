@@ -1,3 +1,7 @@
+// ─────────────────────────────────────────────────────────────
+// main.js
+// ─────────────────────────────────────────────────────────────
+
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -19,11 +23,13 @@ function createUpdateWindow() {
     alwaysOnTop: true,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
-    }
+      contextIsolation: false,
+    },
   });
 
-  updateWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`
+  updateWindow.loadURL(
+    'data:text/html;charset=utf-8,' +
+      encodeURIComponent(`
     <body style="font-family:sans-serif;text-align:center;padding:20px;">
       <h3 id="status">Checking for updates...</h3>
       <progress id="progress" value="0" max="100" style="width: 100%; height: 20px;"></progress>
@@ -59,7 +65,8 @@ function createUpdateWindow() {
         });
       </script>
     </body>
-  `));
+  `)
+  );
 }
 
 function createMainWindow() {
@@ -69,7 +76,7 @@ function createMainWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-    }
+    },
   });
 
   mainWindow.setMenu(null);
@@ -131,29 +138,39 @@ app.on('window-all-closed', () => {
 // ─────────────────────────────────────────────────────────────
 // DOWNLOAD AND OPEN GAME LOGIC
 // ─────────────────────────────────────────────────────────────
+
 const DOWNLOADS_DIR = path.join(app.getPath('documents'), 'SLauncherGames');
 
 const gameLinks = {
   fm: {
     url: 'https://github.com/Szilaardd/SLauncher/raw/refs/heads/main/games/fm/V1.2.1/Windows-Installer.exe',
-    fileName: 'Windows-Installer.exe'
+    fileName: 'Windows-Installer.exe',
   },
   sfe: {
     url: 'https://github.com/Szilaardd/SLauncher/raw/refs/heads/main/games/sfe/V1.0/Installer.exe',
-    fileName: 'Installer.exe'
+    fileName: 'Installer.exe',
   },
   jt: {
     url: 'https://github.com/Szilaardd/SLauncher/raw/refs/heads/main/games/jt/Jump%20Together-1_0_0-windows.exe',
-    fileName: 'JumpTogether.exe'
+    fileName: 'JumpTogether.exe',
   },
   ss: {
     parts: [
       'https://github.com/Szilaardd/SLauncher/releases/download/ss/SSInstallerV1.7z.001',
-      'https://github.com/Szilaardd/SLauncher/releases/download/ss/SSInstallerV1.7z.002'
+      'https://github.com/Szilaardd/SLauncher/releases/download/ss/SSInstallerV1.7z.002',
     ],
     outputFolder: 'Stranger_Sphere',
-    finalExe: path.join(DOWNLOADS_DIR, 'ss', 'Stranger_Sphere', 'Windows', 'Stranger_Sphere', 'Binaries', 'Win64', 'Stranger_Sphere.exe')
-  }
+    finalExe: path.join(
+      DOWNLOADS_DIR,
+      'ss',
+      'Stranger_Sphere',
+      'Windows',
+      'Stranger_Sphere',
+      'Binaries',
+      'Win64',
+      'Stranger_Sphere.exe'
+    ),
+  },
 };
 
 ipcMain.on('download-game', async (event, gameId) => {
@@ -163,74 +180,70 @@ ipcMain.on('download-game', async (event, gameId) => {
   const gameDir = path.join(DOWNLOADS_DIR, gameId);
   fs.mkdirSync(gameDir, { recursive: true });
 
-  if (gameId === 'ss') {
-    let downloaded = 0;
-    for (let i = 0; i < game.parts.length; i++) {
-      const partUrl = game.parts[i];
-      const partPath = path.join(gameDir, `SSInstallerV1.7z.00${i + 1}`);
-      await downloadFile(partUrl, partPath, (percent) => {
-        const progress = Math.floor(((downloaded + percent / 100) / game.parts.length) * 100);
-        event.sender.send('download-progress', { gameId, progress });
+  try {
+    if (gameId === 'ss') {
+      let downloaded = 0;
+      for (let i = 0; i < game.parts.length; i++) {
+        const partUrl = game.parts[i];
+        const partPath = path.join(gameDir, `SSInstallerV1.7z.00${i + 1}`);
+        await downloadFile(partUrl, partPath, (percent) => {
+          const progress = Math.floor(((downloaded + percent / 100) / game.parts.length) * 100);
+          event.sender.send('download-progress', { gameId, progress });
+        });
+        downloaded++;
+      }
+
+      const archivePath = path.join(gameDir, 'SSInstallerV1.7z.001');
+      const output = path.join(gameDir, game.outputFolder);
+      fs.mkdirSync(output, { recursive: true });
+
+      await new Promise((resolve, reject) => {
+        const stream = extract.extractFull(archivePath, output, {
+          $bin: sevenZipPath,
+        });
+        stream.on('end', resolve);
+        stream.on('error', (err) => {
+          event.sender.send('download-error', `Extraction failed: ${err.message}`);
+          reject(err);
+        });
       });
-      downloaded++;
+
+      event.sender.send('download-completed', gameId);
+    } else {
+      const filePath = path.join(gameDir, game.fileName);
+      await downloadFile(game.url, filePath, (percent) => {
+        event.sender.send('download-progress', { gameId, progress: Math.floor(percent) });
+      });
+
+      execFile(filePath);
+      event.sender.send('download-completed', gameId);
     }
-
-    const output = path.join(gameDir, game.outputFolder);
-    fs.mkdirSync(output, { recursive: true });
-
-   await new Promise((resolve, reject) => {
-  const stream = extractFull(
-    path.join(gameDir, 'SSInstallerV1.7z.001'),
-    output,
-    { $bin: sevenZipPath }
-  );
-
-  stream.on('end', resolve);
-  stream.on('error', reject);
-});
-
-
-    event.sender.send('download-completed', gameId);
-  } else {
-    const filePath = path.join(gameDir, game.fileName);
-    await downloadFile(game.url, filePath, (percent) => {
-      event.sender.send('download-progress', { gameId, progress: Math.floor(percent) });
-    });
-
-    execFile(filePath);
-    event.sender.send('download-completed', gameId);
-  }
-});
-
-ipcMain.on('open-game', (event, gameId) => {
-  if (gameId === 'ss') {
-    const exePath = gameLinks.ss.finalExe;
-    if (fs.existsSync(exePath)) execFile(exePath);
-    else console.error('Stranger_Sphere.exe not found.');
-  } else {
-    const filePath = path.join(DOWNLOADS_DIR, gameId, gameLinks[gameId].fileName);
-    if (fs.existsSync(filePath)) execFile(filePath);
-    else console.error('Game not installed:', filePath);
+  } catch (err) {
+    event.sender.send('download-error', `Download failed: ${err.message}`);
   }
 });
 
 function downloadFile(url, dest, onProgress) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
-    https.get(url, (response) => {
-      const total = parseInt(response.headers['content-length'], 10);
-      let downloaded = 0;
+    https
+      .get(url, (response) => {
+        const total = parseInt(response.headers['content-length'], 10);
+        let downloaded = 0;
 
-      response.pipe(file);
-      response.on('data', (chunk) => {
-        downloaded += chunk.length;
-        const percent = (downloaded / total) * 100;
-        onProgress(percent);
+        response.pipe(file);
+        response.on('data', (chunk) => {
+          downloaded += chunk.length;
+          const percent = (downloaded / total) * 100;
+          onProgress(percent);
+        });
+
+        file.on('finish', () => file.close(resolve));
+      })
+      .on('error', (err) => {
+        fs.unlink(dest, () => {
+          reject(err);
+        });
       });
-
-      file.on('finish', () => file.close(resolve));
-    }).on('error', (err) => {
-      fs.unlink(dest, () => reject(err));
-    });
   });
 }
