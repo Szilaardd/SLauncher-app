@@ -1,19 +1,33 @@
 {
   "appId": "com.szilaardd.slauncher",
+  "productName": "SLauncher",
   "directories": {
-    
+    "buildResources": "assets",
+    "output": "dist"
   },
   "files": [
     "build/**/*",
     "main.js",
-    "preload.js"
+    "preload.js",
+    "package.json"
   ],
   "extraMetadata": {
     "main": "main.js"
   },
   "win": {
-    "target": [
-      "nsis"
-    ]
-  }
+    "target": "nsis"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": true,
+    "allowElevation": true,
+    "allowToChangeInstallationDirectory": true
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "szilaardd",
+      "repo": "SLauncher-app"
+    }
+  ]
 }
