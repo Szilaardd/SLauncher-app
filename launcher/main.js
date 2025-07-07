@@ -71,8 +71,7 @@ function createMainWindow() {
 
   mainWindow.setMenu(null);
 
-  const indexPath = path.join(__dirname, 'build', 'index.html');
-  mainWindow.loadURL(`file://${indexPath}`);
+ mainWindow.loadFile(path.join(__dirname, 'build', 'index.html'));
 
   // DevTools bekapcsolása, ha kell
   // mainWindow.webContents.openDevTools();
