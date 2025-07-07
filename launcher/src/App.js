@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, NavLink } from 'react-router-dom'; // ✅ HashRouter!
 
 // Mock electronAPI, ha nincs definiálva (fejlesztéshez böngészőben)
 const electronAPI = window.electronAPI || {
@@ -105,7 +105,7 @@ function GameCard({ game }) {
     electronAPI.onDownloadCompleted(onCompleted);
 
     return () => {
-      // ha az electronAPI támogatja, itt töröld az eventeket
+      // ha támogatott, itt törölheted az eventeket
     };
   }, [game.id]);
 
