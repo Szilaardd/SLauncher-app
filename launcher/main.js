@@ -1,6 +1,11 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
+const fs = require('fs');
+const https = require('https');
+const { execFile } = require('child_process');
+// node-7z használata, telepítsd: npm install node-7z
+const Seven = require('node-7z');
 
 let mainWindow;
 let updateWindow;
@@ -71,16 +76,123 @@ function createMainWindow() {
 
   mainWindow.setMenu(null);
 
- mainWindow.loadFile(path.join(__dirname, 'build', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'build', 'index.html'));
 
-  // DevTools bekapcsolása, ha kell
   // mainWindow.webContents.openDevTools();
 }
 
+// Letöltésekhez mappa
+const downloadsDir = path.join(app.getPath('userData'), 'downloads');
+if (!fs.existsSync(downloadsDir)) {
+  fs.mkdirSync(downloadsDir, { recursive: true });
+}
+
+// Játékfájlok URL-jei, állítsd be a valós linkeket
+const gameFiles = {
+  fm: ['https://example.com/fm.7z'],
+  sfe: ['https://example.com/sfe.7z'],
+  jt: ['https://example.com/jt.7z'],
+  ss: [
+    'https://example.com/ss.7z',
+    'https://example.com/ss.001'
+  ],
+};
+
+// IPC: játék letöltése
+ipcMain.on('download-game', async (event, gameId) => {
+  if (!gameFiles[gameId]) {
+    event.sender.send('download-error', `Ismeretlen játék: ${gameId}`);
+    return;
+  }
+
+  try {
+    const files = gameFiles[gameId];
+    const downloadedFiles = [];
+
+    for (const fileUrl of files) {
+      const fileName = path.basename(fileUrl);
+      const filePath = path.join(downloadsDir, fileName);
+      await downloadFile(fileUrl, filePath, (percent) => {
+        event.sender.send('download-progress', { gameId, progress: percent });
+      });
+      downloadedFiles.push(filePath);
+    }
+
+    if (gameId === 'ss') {
+      const extractPath = path.join(downloadsDir, 'ss_extracted');
+      if (!fs.existsSync(extractPath)) fs.mkdirSync(extractPath);
+      await extract7z(downloadedFiles[0], extractPath);
+    }
+
+    event.sender.send('download-completed', gameId);
+  } catch (err) {
+    event.sender.send('download-error', err.message);
+  }
+});
+
+// IPC: játék indítása
+ipcMain.on('open-game', (event, gameId) => {
+  let exePath;
+
+  if (gameId === 'ss') {
+    exePath = path.join(downloadsDir, 'ss_extracted', 'setup.exe'); // módosítsd, ha más az exe neve
+  } else {
+    exePath = path.join(downloadsDir, `${gameId}.exe`); // feltételezett exe név
+  }
+
+  if (!fs.existsSync(exePath)) {
+    event.sender.send('open-game-error', `Nem található az indító fájl: ${exePath}`);
+    return;
+  }
+
+  execFile(exePath, (error) => {
+    if (error) {
+      event.sender.send('open-game-error', `Hiba a játék indításakor: ${error.message}`);
+    }
+  });
+});
+
+// Letöltést segítő függvény
+function downloadFile(url, dest, onProgress) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    let receivedBytes = 0;
+
+    https.get(url, (response) => {
+      const totalBytes = parseInt(response.headers['content-length'], 10);
+      response.pipe(file);
+
+      response.on('data', (chunk) => {
+        receivedBytes += chunk.length;
+        const percent = Math.round((receivedBytes / totalBytes) * 100);
+        onProgress(percent);
+      });
+
+      file.on('finish', () => {
+        file.close(resolve);
+      });
+    }).on('error', (err) => {
+      fs.unlink(dest, () => reject(err));
+    });
+  });
+}
+
+// 7zip kicsomagolás
+function extract7z(archivePath, outputPath) {
+  return new Promise((resolve, reject) => {
+    const myStream = Seven.extractFull(archivePath, outputPath, {
+      $progress: true
+    });
+
+    myStream.on('end', resolve);
+    myStream.on('error', reject);
+  });
+}
+
+// app lifecycle, updater, ipcMain események...
+
 app.whenReady().then(() => {
   createUpdateWindow();
-  // Ha nem akarod updateWindow-ot használni, cseréld erre:
-  // createMainWindow();
 
   autoUpdater.checkForUpdatesAndNotify();
 
@@ -132,22 +244,4 @@ ipcMain.on('quit-app', () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
-});
-
-ipcMain.on('download-game', (event, gameId) => {
-  console.log('Download requested for:', gameId);
-  let progress = 0;
-  const interval = setInterval(() => {
-    progress += 10;
-    event.sender.send('download-progress', { gameId, progress });
-    if (progress >= 100) {
-      clearInterval(interval);
-      event.sender.send('download-completed', gameId);
-    }
-  }, 300);
-});
-
-ipcMain.on('open-game', (event, gameId) => {
-  console.log('Open game requested:', gameId);
-  // TODO: Indítsd el a játékot itt
 });

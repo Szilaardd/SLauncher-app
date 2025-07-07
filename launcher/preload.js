@@ -17,4 +17,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, data) => callback(data)),
     onDownloadCompleted: (callback) => ipcRenderer.on('download-completed', (event, gameId) => callback(gameId)),
     openGame: (gameId) => ipcRenderer.send('open-game', gameId),
+
+ downloadGame: (gameId) => ipcRenderer.send('download-game', gameId),
+  openGame: (gameId) => ipcRenderer.send('open-game', gameId),
+  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, data) => callback(data)),
+  onDownloadCompleted: (callback) => ipcRenderer.on('download-completed', (event, gameId) => callback(gameId)),
+  onDownloadError: (callback) => ipcRenderer.on('download-error', (event, error) => callback(error)),
+  onOpenGameError: (callback) => ipcRenderer.on('open-game-error', (event, error) => callback(error)),
 });
