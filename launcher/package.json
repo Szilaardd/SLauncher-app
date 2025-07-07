@@ -1,17 +1,18 @@
 {
   "name": "launcher",
   "version": "5.0.0",
-  "private": true,
-  "main": "main.js",
   "description": "SLauncher - Game launcher app",
   "author": "Szilárd Bálint",
+  "private": true,
+  "main": "main.js",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "package": "electron-builder"
   },
   "dependencies": {
-    "electron-updater": "^6.6.2",
+    "electron": "^25.2.0",
+    "electron-updater": "^6.1.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.6.3",
@@ -19,7 +20,6 @@
     "web-vitals": "^5.0.3"
   },
   "devDependencies": {
-    "electron": "^25.2.0",
     "electron-builder": "^26.0.12"
   },
   "browserslist": {
@@ -32,6 +32,39 @@
       "last 1 chrome version",
       "last 1 firefox version",
       "last 1 safari version"
+    ]
+  },
+  "build": {
+    "appId": "com.szilaardd.slauncher",
+    "productName": "SLauncher",
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "files": [
+      "build/**/*",
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "main.js"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "szilaardd",
+        "repo": "SLauncher-app"
+      }
     ]
   }
 }

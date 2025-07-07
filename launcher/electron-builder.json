@@ -1,15 +1,19 @@
 {
   "appId": "com.szilaardd.slauncher",
+  "directories": {
+    
+  },
   "files": [
     "build/**/*",
     "main.js",
-    "preload.js",
-    "package.json"
+    "preload.js"
   ],
-  "directories": {
-    "buildResources": "assets"
+  "extraMetadata": {
+    "main": "main.js"
   },
   "win": {
-    "target": ["nsis"]
+    "target": [
+      "nsis"
+    ]
   }
 }
